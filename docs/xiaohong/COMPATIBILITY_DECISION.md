@@ -1,40 +1,56 @@
 # XiaoHong × XiaoZhi：服务层复用决策记录
 
-**状态：待协议采集验证；当前不分叉 XiaoZhi 核心。**
+**状态：控制平面已确认复用；实时设备会话协议待采集验证；不分叉 XiaoZhi 核心。**
 
-## 已知事实
+## 已确认事实
 
-- XiaoHong 是 WS63 + OpenHarmony 的 RISC-V 设备，公开资料表明其端侧具备
-  Wi-Fi、BLE、NearLink、Opus 音频、屏幕与 GPIO/I²C/UART 扩展能力。
-- `xiaozhi-esp32-server` 是按小智通信协议实现的后端，提供 WebSocket 与
-  MQTT+UDP 接入、OTA、音频交互、设备管理、MCP 与插件机制。
-- 芯片、RTOS 和硬件驱动不同，并不能直接推出云端不能复用；反过来，均使用
-  WebSocket 或 Opus 也不能推出协议兼容。
+- AuraAudio 智控台的探索报告将项目标识为 `xiaozhi-esp32-server v0.9.2`，其前端
+  通过 `/xiaohong + 接口路径` 调用管理 API，并使用 Bearer token 鉴权。
+- 已观察到的小鸿设备以 `board: xiaohong_v1`、`appVersion: 1.0.5` 进入同一套
+  Agent、设备绑定与固件类型管理模型。
+- 该控制平面已暴露 Agent、设备、知识库、声纹、MCP、语音克隆等 API；OTA 管理
+  也存在，但需要管理员权限。
+- 小鸿端仍是 WS63 + OpenHarmony 的独立硬件/系统栈。芯片、RTOS 和板级驱动不同，
+  不影响复用管理服务；但它们也不说明实时语音协议必然与小智客户端兼容。
+
+> 证据来源是一次带登录态的 API 探索报告；报告本身为 AI 辅助生成，必须使用本仓库的
+> 只读探测器和真实设备会话采集复验，不能将其视为运行时协议的最终证明。
 
 ## 结论
 
-不维护长期 `xiaohong` 分支。采用三层仓库边界：
+不维护长期 `xiaohong` 分支。采用以下仓库与运行时边界：
 
 1. **小鸿端**：在 `xiaohong-ai` 的 OpenHarmony / BSP 仓库或独立 overlay 中维护，
    负责唤醒、音频、屏幕、GPIO、配网和端侧协议。
-2. **小智 fork**：保持接近上游。只有在协议验证后，才增加一个可插拔的
-   `xiaohong` adapter；不得把 OpenHarmony 驱动、板级逻辑或 Agent 业务塞入核心。
-3. **XiaoHong Hub（独立仓库）**：负责 Coding Agent、实体确认、设备能力模型、
-   场景编排、审计和小鸿 ↔ 小智/其他云的桥接。
+2. **小智 fork**：复用并维护已确认的控制平面能力。仅当真实会话协议验证后，才增加
+   一个可插拔的 `xiaohong` device profile / adapter；不得把 OpenHarmony 驱动、板级逻辑
+   或 Agent 业务塞入核心。
+3. **`xiaohong-gateway` / XiaoHong Hub（独立仓库）**：在实时协议不一致时做认证、
+   消息、音频帧和设备能力翻译；同时承载 Coding Agent、实体确认、场景编排与审计。
+
+## 服务层分层判断
+
+| 层级 | 结论 | 当前动作 |
+| --- | --- | --- |
+| 控制台与管理 API | **可复用已确认** | 基于小智 fork 部署全模块服务，先用只读探测器复验 Agent、设备与固件类型字典 |
+| 数据模型 | **高度可复用** | 保留 `board=xiaohong_v1`、Agent 绑定、固件类型、设备别名与版本字段 |
+| OTA 管理后台 | **可复用，但需管理员配置** | 本地自建时以管理员创建 `xiaohong_v1` 固件记录；暂不假设设备 OTA 请求兼容 |
+| 实时语音/控制会话 | **未验证** | 采集注册、鉴权、控制 JSON、上/下行音频、打断与能力 ACK |
+| 小鸿端驱动/界面/GPIO | **不可复用** | 独立维护在 OpenHarmony / BSP 侧 |
 
 ## 路径选择
 
-| 采集结果 | 实施方式 |
+| 真实会话采集结果 | 实施方式 |
 | --- | --- |
-| 认证、控制 JSON、Opus 帧、OTA 全部与小智一致 | 在小智 fork 新增小鸿设备 profile / adapter，设备端单独维护 |
+| 认证、控制 JSON、Opus 帧、OTA 全部与小智一致 | 在小智 fork 新增小鸿 device profile / adapter；端侧单独维护 |
 | WebSocket 或 MQTT+UDP、Opus 大致一致，但消息或鉴权不同 | 新建独立 `xiaohong-gateway`，在边界翻译协议；不改小智核心 |
-| 只发现自定义/不支持的传输或闭源云协议 | 小鸿云端与端侧独立，Hub 通过业务 API/插件与其集成 |
+| 实时会话使用自定义/不支持的传输或闭源云协议 | 小鸿云端与端侧独立，Hub 通过业务 API/插件与其集成 |
 
 ## 当前分支用途
 
-`chore/xiaohong-compatibility-baseline` 只放协议采集与判定工具，不承诺运行时
-兼容性。待完成真实设备会话采集后，再创建短生命周期的
-`spike/xiaohong-protocol-adapter` 分支验证适配器。
+`chore/xiaohong-compatibility-baseline` 只放控制平面复验工具、协议采集和决策文档。
+它合并后不应成为长期功能分支。待完成真实设备会话采集后，再创建短生命周期的
+`spike/xiaohong-protocol-adapter` 分支验证运行时适配器。
 
 ## 必采数据
 
