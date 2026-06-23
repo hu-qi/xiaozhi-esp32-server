@@ -1,0 +1,5 @@
+{"ts":"2026-06-23T12:00:00Z","direction":"device_to_cloud","transport":"wss","endpoint":"wss://cloud.example/v1/session","kind":"text","payload":{"type":"hello","device_id":"redacted"}}
+{"ts":"2026-06-23T12:00:01Z","direction":"cloud_to_device","transport":"wss","endpoint":"wss://cloud.example/v1/session","kind":"text","payload":{"type":"session_ready"}}
+{"ts":"2026-06-23T12:00:02Z","direction":"device_to_cloud","transport":"wss","endpoint":"wss://cloud.example/v1/session","kind":"binary","audio":{"codec":"opus","sample_rate":16000,"channels":1,"frame_ms":60}}
+{"ts":"2026-06-23T12:00:03Z","direction":"cloud_to_device","transport":"wss","endpoint":"wss://cloud.example/v1/session","kind":"binary","audio":{"codec":"opus","sample_rate":24000,"channels":1,"frame_ms":60}}
+{"ts":"2026-06-23T12:00:04Z","direction":"cloud_to_device","transport":"wss","endpoint":"wss://cloud.example/v1/session","kind":"text","payload":{"type":"tts_stop"}}
